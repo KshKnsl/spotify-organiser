@@ -31,8 +31,7 @@
             {% for item in liked_songs %}
                 {% set track = item.track %}
                 {% if track and track.name and track.name.strip() %}
-                <div class="flex items-center p-3 rounded-lg hover:bg-[#535353] transition-colors group cursor-pointer"
-                     onclick="showAudioAnalysis('{{ track.id }}', '{{ track.name|e }}', '{{ track.artists[0].name|e if track.artists else 'Unknown Artist' }}')">
+                <div class="flex items-center p-3 rounded-lg hover:bg-[#535353] transition-colors group">
                     <div class="w-8 text-[#b3b3b3] text-sm">{{ loop.index }}</div>
                     
                     {% if track.album.images and track.album.images|length > 0 %}
@@ -49,6 +48,16 @@
                         <div class="text-sm text-[#b3b3b3]">
                             {{ track.artists[0].name if track.artists else 'Unknown Artist' }}{% if track.artists and track.artists|length > 1 %} + {{ track.artists|length - 1 }} more{% endif %}
                         </div>
+                        {% if track.artists and track.artists[0] %}
+                            {% set artist_genres = track.artists[0].get('genres', []) %}
+                            {% if artist_genres %}
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    {% for genre in artist_genres[:2] %}
+                                        <span class="bg-[#1db954] text-white px-2 py-1 rounded text-xs">{{ genre }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endif %}
                     </div>
                     
                     <div class="text-sm text-[#b3b3b3] mr-4">{{ track.album.name }}</div>
@@ -62,20 +71,10 @@
                             {{ '%d:%02d'|format((track.duration_ms / 60000)|int, ((track.duration_ms % 60000) / 1000)|int) }}
                         {% endif %}
                     </div>
-                    
-                    <div class="opacity-0 group-hover:opacity-100 transition-opacity ml-4">
-                        <i class="fas fa-chart-line text-[#1db954]"></i>
-                    </div>
                 </div>
                 {% endif %}
             {% endfor %}
         </div>
-        
-        {% if liked_songs|length >= 100 %}
-            <div class="text-center mt-6">
-                <p class="text-[#b3b3b3]">Showing first 100 liked songs</p>
-            </div>
-        {% endif %}
     {% else %}
         <div class="text-center py-12">
             <i class="fas fa-heart text-4xl text-[#535353] mb-4"></i>
@@ -84,98 +83,9 @@
         </div>
     {% endif %}
 </div>
-
-<!-- Audio Analysis Modal -->
-<div id="audioAnalysisModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-[#191414] rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Audio Analysis</h3>
-            <button onclick="closeAudioAnalysis()" class="text-[#b3b3b3] hover:text-white">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div id="audioAnalysisContent">
-            <div class="flex justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1db954]"></div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function showAudioAnalysis(trackId, trackName, artistName) {
-    const modal = document.getElementById('audioAnalysisModal');
-    const content = document.getElementById('audioAnalysisContent');
-    
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    
-    content.innerHTML = `
-        <div class="flex justify-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1db954]"></div>
-        </div>
-    `;
-    
-    fetch(`/api/audio-analysis/${trackId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                content.innerHTML = `
-                    <div class="text-center py-8">
-                        <p class="text-red-400">Error: ${data.error}</p>
-                    </div>
-                `;
-            } else {
-                const features = data.features;
-                content.innerHTML = `
-                    <div class="mb-4">
-                        <h4 class="font-bold">${trackName}</h4>
-                        <p class="text-[#b3b3b3]">by ${artistName}</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-[#535353] p-3 rounded">
-                            <div class="text-sm text-[#b3b3b3]">Tempo</div>
-                            <div class="text-lg font-bold">${features.tempo ? Math.round(features.tempo) + ' BPM' : 'N/A'}</div>
-                        </div>
-                        <div class="bg-[#535353] p-3 rounded">
-                            <div class="text-sm text-[#b3b3b3]">Key</div>
-                            <div class="text-lg font-bold">${features.key !== null ? features.key : 'N/A'}</div>
-                        </div>
-                        <div class="bg-[#535353] p-3 rounded">
-                            <div class="text-sm text-[#b3b3b3]">Energy</div>
-                            <div class="text-lg font-bold">${features.energy ? Math.round(features.energy * 100) + '%' : 'N/A'}</div>
-                        </div>
-                        <div class="bg-[#535353] p-3 rounded">
-                            <div class="text-sm text-[#b3b3b3]">Danceability</div>
-                            <div class="text-lg font-bold">${features.danceability ? Math.round(features.danceability * 100) + '%' : 'N/A'}</div>
-                        </div>
-                        <div class="bg-[#535353] p-3 rounded">
-                            <div class="text-sm text-[#b3b3b3]">Valence</div>
-                            <div class="text-lg font-bold">${features.valence ? Math.round(features.valence * 100) + '%' : 'N/A'}</div>
-                        </div>
-                        <div class="bg-[#535353] p-3 rounded">
-                            <div class="text-sm text-[#b3b3b3]">Loudness</div>
-                            <div class="text-lg font-bold">${features.loudness ? Math.round(features.loudness) + ' dB' : 'N/A'}</div>
-                        </div>
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            content.innerHTML = `
-                <div class="text-center py-8">
-                    <p class="text-red-400">Error loading analysis</p>
-                </div>
-            `;
-        });
-}
-
-function closeAudioAnalysis() {
-    const modal = document.getElementById('audioAnalysisModal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-}
 </script>
 {% endblock %}

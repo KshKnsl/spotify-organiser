@@ -21,18 +21,25 @@
                 
                 {% if session.token_info %}
                 <div class="flex items-center space-x-4">
-                    <!-- Search Bar -->
-                    <form action="{{ url_for('search') }}" method="GET" class="hidden md:flex items-center">
-                        <div class="relative">
-                            <input type="text" name="q" placeholder="Search tracks, albums..." 
-                                   class="bg-[#535353] text-white placeholder-[#b3b3b3] px-4 py-2 pr-10 rounded-full focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1db954] w-64">
-                            <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#b3b3b3] hover:text-white">
-                                <i class="fas fa-search"></i>
-                            </button>
+                    <!-- User Profile -->
+                    {% if user %}
+                    <div class="flex items-center space-x-3">
+                        {% if user.images and user.images|length > 0 %}
+                            <img src="{{ user.images[0].url }}" alt="{{ user.display_name or user.id }}" 
+                                 class="w-8 h-8 rounded-full">
+                        {% else %}
+                            <div class="w-8 h-8 bg-[#535353] rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-[#b3b3b3] text-sm"></i>
+                            </div>
+                        {% endif %}
+                        <div class="text-right">
+                            <div class="text-sm font-medium text-white">
+                                {{ user.display_name or user.id }}
+                            </div>
                         </div>
-                    </form>
+                    </div>
+                    {% endif %}
                     
-                    <span class="text-[#b3b3b3] hidden sm:block">Welcome back!</span>
                     <a href="{{ url_for('logout') }}" 
                        class="bg-[#535353] hover:bg-[#b3b3b3] text-white px-4 py-2 rounded-full transition-colors">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -44,7 +51,6 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}

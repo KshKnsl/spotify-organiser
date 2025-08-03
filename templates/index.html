@@ -26,10 +26,6 @@
                         <i class="fas fa-pause text-[#535353]"></i> Paused
                     {% endif %}
                 </span>
-                <button data-track-id="{{ current_playback.item.id }}" 
-                        class="current-track-analysis-btn text-xs bg-[#1db954] text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">
-                    <i class="fas fa-chart-line mr-1"></i>Analysis
-                </button>
             </div>
         </div>
     </div>
@@ -49,10 +45,6 @@
             <p class="album-name text-sm text-[#535353]"></p>
             <div class="mt-2 flex items-center space-x-2">
                 <span class="play-status text-xs text-[#b3b3b3]"></span>
-                <button data-track-id="" 
-                        class="current-track-analysis-btn text-xs bg-[#1db954] text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">
-                    <i class="fas fa-chart-line mr-1"></i>Analysis
-                </button>
             </div>
         </div>
     </div>
@@ -131,11 +123,17 @@
                         <div class="flex-grow min-w-0">
                             <h4 class="font-medium text-sm truncate">{{ track.name }}</h4>
                             <p class="text-xs text-[#b3b3b3]">{{ track.artists[0].name if track.artists else 'Unknown Artist' }}</p>
+                            {% if track.artists and track.artists[0] %}
+                                {% set artist_genres = track.artists[0].get('genres', []) %}
+                                {% if artist_genres %}
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        {% for genre in artist_genres[:2] %}
+                                            <span class="bg-[#1db954] text-white px-1 py-0.5 rounded text-xs">{{ genre }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                         </div>
-                        <button data-track-id="{{ track.id }}" 
-                                class="audio-analysis-btn opacity-0 group-hover:opacity-100 text-xs bg-[#1db954] text-white px-2 py-1 rounded transition-all">
-                            <i class="fas fa-chart-line"></i>
-                        </button>
                     </div>
                     {% endif %}
                 {% endfor %}
@@ -149,23 +147,6 @@
     </div>
 </div>
 
-<!-- Audio Analysis Modal -->
-<div id="audioAnalysisModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-[#191414] rounded-lg p-6 max-w-2xl w-full max-h-96 overflow-y-auto border border-[#535353]">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Audio Analysis</h3>
-            <button onclick="closeAudioAnalysis()" class="text-[#b3b3b3] hover:text-white">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div id="audioAnalysisContent">
-            <div class="flex items-center justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1db954]"></div>
-                <span class="ml-2">Loading analysis...</span>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -184,15 +165,6 @@ document.addEventListener('DOMContentLoaded', function() {
         element.addEventListener('click', function() {
             const playlistId = this.getAttribute('data-playlist-id');
             window.location.href = `/playlist/${playlistId}`;
-        });
-    });
-    
-    // Audio analysis button handlers
-    document.querySelectorAll('.audio-analysis-btn, .current-track-analysis-btn').forEach(function(element) {
-        element.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent playlist click when clicking button
-            const trackId = this.getAttribute('data-track-id');
-            showAudioAnalysis(trackId);
         });
     });
 });
@@ -262,91 +234,6 @@ function updateCurrentPlaybackUI(playback) {
             playStatus.innerHTML = '<i class="fas fa-pause text-[#535353]"></i> Paused';
         }
     }
-    
-    // Update analysis button with new track ID
-    const analysisBtn = playbackSection.querySelector('.current-track-analysis-btn');
-    if (analysisBtn) {
-        analysisBtn.setAttribute('data-track-id', playback.item.id);
-        // Re-attach event listener for the new track
-        analysisBtn.removeEventListener('click', handleAnalysisClick);
-        analysisBtn.addEventListener('click', handleAnalysisClick);
-    }
 }
-
-function handleAnalysisClick(e) {
-    e.stopPropagation();
-    const trackId = this.getAttribute('data-track-id');
-    showAudioAnalysis(trackId);
-}
-
-function showAudioAnalysis(trackId) {
-    document.getElementById('audioAnalysisModal').classList.remove('hidden');
-    
-    fetch(`/api/audio-analysis/${trackId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.features) {
-                const content = `
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span>Tempo:</span>
-                                <span>${Math.round(data.features.tempo || 0)} BPM</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Key:</span>
-                                <span>${data.features.key || 'Unknown'}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Mode:</span>
-                                <span>${data.features.mode === 1 ? 'Major' : 'Minor'}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Time Signature:</span>
-                                <span>${data.features.time_signature || 'Unknown'}/4</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span>Energy:</span>
-                                <span>${Math.round((data.features.energy || 0) * 100)}%</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Danceability:</span>
-                                <span>${Math.round((data.features.danceability || 0) * 100)}%</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Valence:</span>
-                                <span>${Math.round((data.features.valence || 0) * 100)}%</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Loudness:</span>
-                                <span>${Math.round(data.features.loudness || 0)} dB</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('audioAnalysisContent').innerHTML = content;
-            } else {
-                document.getElementById('audioAnalysisContent').innerHTML = 
-                    '<p class="text-center text-[#b3b3b3]">Analysis not available for this track.</p>';
-            }
-        })
-        .catch(error => {
-            document.getElementById('audioAnalysisContent').innerHTML = 
-                '<p class="text-center text-red-400">Error loading analysis.</p>';
-        });
-}
-
-function closeAudioAnalysis() {
-    document.getElementById('audioAnalysisModal').classList.add('hidden');
-}
-
-// Close modal when clicking outside
-document.getElementById('audioAnalysisModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeAudioAnalysis();
-    }
-});
 </script>
 {% endblock %}

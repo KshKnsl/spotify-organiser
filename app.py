@@ -3,9 +3,9 @@ import os
 from utils.auth import get_spotify_oauth, get_spotify_client
 from utils.spotify_api import (
     get_user_playlists, get_user_liked_songs,
-    get_current_playback, get_currently_playing, get_audio_analysis,
-    search_spotify, get_tracks_from_playlist
+    get_current_playback, get_tracks_from_playlist
 )
+from utils.genre_cache import enrich_tracks_with_cached_genres
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
@@ -23,10 +23,13 @@ def index():
         liked_songs = get_user_liked_songs(sp, limit=20)
         current_playback = get_current_playback(sp)
         
+        # Enrich the liked songs preview with genre information
+        enriched_liked_songs = enrich_tracks_with_cached_genres(sp, liked_songs)
+        
         return render_template('index.html', 
                              user=user_info, 
                              playlists=playlists,
-                             liked_songs=liked_songs,
+                             liked_songs=enriched_liked_songs,
                              current_playback=current_playback)
     except Exception as e:
         flash(f'Error loading data: {str(e)}', 'error')
@@ -68,12 +71,17 @@ def view_playlist(playlist_id):
     
     try:
         sp = get_spotify_client(session['token_info'])
+        user_info = sp.current_user()
         playlist = sp.playlist(playlist_id)
         tracks = get_tracks_from_playlist(sp, playlist_id)
         
+        # Enrich tracks with genre information
+        enriched_tracks = enrich_tracks_with_cached_genres(sp, tracks)
+        
         return render_template('playlist_detail.html', 
+                             user=user_info,
                              playlist=playlist, 
-                             tracks=tracks)
+                             tracks=enriched_tracks)
     except Exception as e:
         flash(f'Error loading playlist: {str(e)}', 'error')
         return redirect(url_for('index'))
@@ -86,68 +94,18 @@ def view_liked_songs():
     
     try:
         sp = get_spotify_client(session['token_info'])
-        liked_songs = get_user_liked_songs(sp, limit=100)
+        user_info = sp.current_user()
+        liked_songs = get_user_liked_songs(sp)  # Fetch all liked songs
+        
+        # Enrich tracks with genre information
+        enriched_liked_songs = enrich_tracks_with_cached_genres(sp, liked_songs)
         
         return render_template('liked_songs_detail.html', 
-                             liked_songs=liked_songs)
+                             user=user_info,
+                             liked_songs=enriched_liked_songs)
     except Exception as e:
         flash(f'Error loading liked songs: {str(e)}', 'error')
         return redirect(url_for('index'))
-
-@app.route('/search')
-def search():
-    """Search page"""
-    if 'token_info' not in session:
-        return redirect(url_for('login'))
-    
-    query = request.args.get('q', '')
-    search_type = request.args.get('type', 'track')
-    results = {}
-    
-    if query:
-        try:
-            sp = get_spotify_client(session['token_info'])
-            results = search_spotify(sp, query, search_type, limit=20)
-        except Exception as e:
-            flash(f'Search error: {str(e)}', 'error')
-    
-    return render_template('search.html', 
-                         query=query, 
-                         search_type=search_type,
-                         results=results)
-
-@app.route('/api/audio-analysis/<track_id>')
-def api_audio_analysis(track_id):
-    """API endpoint to get audio analysis for a track"""
-    if 'token_info' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    try:
-        sp = get_spotify_client(session['token_info'])
-        analysis = get_audio_analysis(sp, track_id)
-        
-        if analysis:
-            # Extract key features for easier display
-            track_data = analysis.get('track', {})
-            features = {
-                'tempo': track_data.get('tempo'),
-                'key': track_data.get('key'),
-                'mode': track_data.get('mode'),
-                'time_signature': track_data.get('time_signature'),
-                'duration': track_data.get('duration'),
-                'loudness': track_data.get('loudness'),
-                'energy': track_data.get('energy'),
-                'danceability': track_data.get('danceability'),
-                'valence': track_data.get('valence'),
-                'acousticness': track_data.get('acousticness'),
-                'instrumentalness': track_data.get('instrumentalness'),
-                'speechiness': track_data.get('speechiness'),
-            }
-            return jsonify({'analysis': analysis, 'features': features})
-        else:
-            return jsonify({'error': 'Analysis not available'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/current-playback')
 def api_current_playback():
@@ -158,11 +116,9 @@ def api_current_playback():
     try:
         sp = get_spotify_client(session['token_info'])
         playback = get_current_playback(sp)
-        currently_playing = get_currently_playing(sp)
         
         return jsonify({
-            'playback': playback,
-            'currently_playing': currently_playing
+            'playback': playback
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
