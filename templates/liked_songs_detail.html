@@ -16,8 +16,15 @@
         <div class="flex-1">
             <h1 class="text-3xl font-bold mb-2">Liked Songs</h1>
             <p class="text-[#b3b3b3] mb-3">Your personal collection of liked tracks</p>
-            <div class="flex items-center space-x-4 text-sm text-[#b3b3b3]">
-                <span><i class="fas fa-music mr-1"></i>{{ liked_songs|length }} tracks</span>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4 text-sm text-[#b3b3b3]">
+                    <span><i class="fas fa-music mr-1"></i>{{ liked_songs|length }} tracks</span>
+                </div>
+                <a href="{{ url_for('detect_duplicates') }}" 
+                   class="bg-[#1db954] hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                    <i class="fas fa-copy mr-2"></i>
+                    Detect Duplicates
+                </a>
             </div>
         </div>
     </div>

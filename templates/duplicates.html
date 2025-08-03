@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('index') }}" 
+       class="inline-flex items-center text-[#1db954] hover:text-green-400 transition-colors">
+        <i class="fas fa-arrow-left mr-2"></i>
+        Back to Dashboard
+    </a>
+</div>
+
+<!-- Header -->
+<div class="bg-[#191414] rounded-lg p-6 mb-6 border border-[#535353]">
+    <div class="flex items-center space-x-6">
+        <div class="w-32 h-32 bg-[#1db954] rounded-lg flex items-center justify-center">
+            <i class="fas fa-copy text-4xl text-white"></i>
+        </div>
+        <div class="flex-grow">
+            <h1 class="text-4xl font-bold mb-2">Duplicate Songs</h1>
+            <p class="text-[#b3b3b3] mb-3">Duplicate tracks found in your liked songs</p>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4 text-sm text-[#b3b3b3]">
+                    <span>{{ duplicates|length }} duplicate sets found</span>
+                    <span>•</span>
+                    <span>{{ duplicates|sum(attribute='duplicate_count') }} total duplicate tracks</span>
+                </div>
+                {% if duplicates %}
+                <button onclick="mergeAllDuplicates()" 
+                        class="bg-[#1db954] hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                    <i class="fas fa-magic mr-2"></i>
+                    Merge All
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicates List -->
+<div class="bg-[#191414] rounded-lg border border-[#535353] overflow-hidden">
+    <div class="p-6 border-b border-[#535353]">
+        <h2 class="text-2xl font-bold">Duplicate Tracks</h2>
+        {% if duplicates %}
+            <p class="text-sm text-[#b3b3b3] mt-2">
+                These tracks appear multiple times in your liked songs. Each group shows all instances of the same song.
+            </p>
+        {% endif %}
+    </div>
+    
+    {% if duplicates %}
+        <div class="divide-y divide-[#535353]">
+            {% for duplicate_group in duplicates %}
+                <div class="p-6">
+                    <!-- Group Header -->
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-[#1db954]">
+                            {{ duplicate_group.track_name }}
+                        </h3>
+                        <p class="text-sm text-[#b3b3b3]">
+                            by {{ duplicate_group.artist_name }} • {{ duplicate_group.duplicate_count }} copies found
+                        </p>
+                    </div>
+                    
+                    <!-- Duplicate Instances -->
+                    <div class="space-y-2 ml-4">
+                        {% for item in duplicate_group.tracks %}
+                            {% set track = item.track %}
+                            <div class="flex items-center p-3 rounded-lg bg-[#535353] hover:bg-[#636363] transition-colors">
+                                <span class="text-[#b3b3b3] text-sm w-8">{{ loop.index }}</span>
+                                
+                                {% if track.album.images %}
+                                    <img src="{{ track.album.images[-1].url }}" alt="{{ track.name }}" 
+                                         class="w-10 h-10 rounded mr-4">
+                                {% else %}
+                                    <div class="w-10 h-10 bg-[#191414] rounded mr-4 flex items-center justify-center">
+                                        <i class="fas fa-music text-[#b3b3b3] text-xs"></i>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="flex-grow min-w-0">
+                                    <h4 class="font-medium text-sm truncate">{{ track.name }}</h4>
+                                    <p class="text-xs text-[#b3b3b3] truncate">
+                                        {{ track.artists[0].name if track.artists else 'Unknown Artist' }}
+                                        {% if track.artists and track.artists|length > 1 %} + {{ track.artists|length - 1 }} more{% endif %}
+                                    </p>
+                                </div>
+                                
+                                <div class="text-xs text-[#b3b3b3] mr-4">
+                                    {{ track.album.name if track.album else 'Unknown Album' }}
+                                </div>
+                                
+                                <div class="text-xs text-[#b3b3b3] mr-4">
+                                    Added {{ item.added_at[:10] if item.added_at else 'Unknown' }}
+                                </div>
+                                
+                                <div class="text-xs text-[#b3b3b3]">
+                                    {% if track.duration_ms %}
+                                        {{ '%d:%02d'|format((track.duration_ms / 60000)|int, ((track.duration_ms % 60000) / 1000)|int) }}
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Track ID for identification -->
+                                <div class="text-xs text-[#b3b3b3] ml-4 font-mono">
+                                    ID: {{ track.id[-8:] }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="p-8 text-center">
+            <i class="fas fa-check-circle text-4xl text-[#1db954] mb-4"></i>
+            <h3 class="text-xl font-semibold mb-2">No Duplicates Found!</h3>
+            <p class="text-[#b3b3b3]">Your liked songs collection is clean - no duplicate tracks detected.</p>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mergeAllDuplicates() {
+    fetch('/api/merge-all-duplicates', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to update the duplicate list
+            window.location.reload();
+        }
+        // Silent operation - no error notifications
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Silent operation - no error notifications
+    });
+}
+</script>
+{% endblock %}

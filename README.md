@@ -12,16 +12,11 @@ A Flask web application that helps you organize your Spotify playlists by automa
 - **Duplicate Removal**: Remove duplicate tracks from playlists
 - **Beautiful Web Interface**: Modern, Spotify-themed UI with responsive design
 
-## Screenshots
-
-![Dashboard](assets/dashboard.png)
-![Analysis](assets/analysis.png)
-
 ## Setup
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python
 - A Spotify account
 - Spotify Developer App credentials
 
@@ -47,12 +42,14 @@ pip install spotipy flask python-dotenv
 
 ### 3. Configuration
 
-1. Copy the example environment file:
+1. Create a `.env` file in the project root:
+
 ```bash
-cp .env.example .env
+# Create .env file
+touch .env
 ```
 
-2. Edit the `.env` file with your Spotify credentials:
+2. Add your Spotify credentials to the `.env` file:
 ```
 SPOTIFY_CLIENT_ID=your_spotify_client_id_here
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
@@ -73,7 +70,7 @@ python app.py
 
 3. Click "Login with Spotify" and authorize the application
 
-4. You'll see your profile and all your playlists
+4. Explore your music library with genre information!
 
 ### Using the Features
 
@@ -99,69 +96,49 @@ python app.py
 
 ```
 spotify-organiser/
-├── app.py                 # Main Flask application
+├── app.py                      # Main Flask application with routes
 ├── utils/
-│   ├── auth.py           # Spotify authentication
-│   ├── spotify_api.py    # Spotify API interactions
-│   ├── genre_sorter.py   # Genre categorization logic
-│   └── playlist_creator.py # Playlist creation utilities
+│   ├── auth.py                # Spotify OAuth authentication
+│   ├── spotify_api.py         # Spotify API interactions and data fetching
+│   └── genre_cache.py         # Genre caching system for performance
 ├── templates/
-│   ├── base.html         # Base template
-│   ├── index.html        # Dashboard
-│   └── analyze.html      # Playlist analysis page
+│   ├── base.html              # Base template with navigation
+│   ├── index.html             # Dashboard with playlists and liked songs
+│   ├── login.html             # Spotify OAuth login page
+│   ├── playlist_detail.html   # Detailed playlist view with tracks
+│   ├── liked_songs_detail.html # Complete liked songs collection
+│   └── search.html            # Search functionality (if implemented)
 ├── assets/
-│   └── logo.png          # App logo
-├── .env.example          # Environment variables template
-├── .env                  # Your environment variables (not in git)
-├── pyproject.toml        # Project dependencies
-└── README.md            # This file
+│   └── logo.png               # Application logo
+├── genre_cache.json          # Local genre cache (auto-generated)
+├── .env                      # Environment variables (create this)
+└── README.md                 # This documentation
 ```
 
 ## API Endpoints
 
-- `GET /` - Dashboard with user profile and playlists
-- `GET /login` - Initiate Spotify OAuth
-- `GET /callback` - OAuth callback handler
-- `GET /logout` - Logout and clear session
-- `GET /analyze_playlist/<id>` - Analyze a specific playlist
-- `POST /create_genre_playlists/<id>` - Create genre-based playlists
-- `POST /filter_genre` - Create filtered playlist
-- `POST /remove_duplicates/<id>` - Remove duplicate tracks
-- `GET /api/playlist/<id>/genres` - JSON API for genre data
+### Main Routes
+- `GET /` - Dashboard with user profile, playlists, and liked songs preview
+- `GET /login` - Initiate Spotify OAuth authentication
+- `GET /callback` - Handle OAuth callback and create session
+- `GET /logout` - Logout and clear user session
 
-## How It Works
+### Content Routes
+- `GET /playlist/<id>` - View detailed playlist with all tracks and genres
+- `GET /liked-songs` - View complete liked songs collection
 
-1. **Authentication**: Uses Spotify's OAuth 2.0 for secure authentication
-2. **Genre Detection**: Analyzes track artists to determine genres using Spotify's genre data
-3. **Categorization**: Groups tracks by their primary genres
-4. **Playlist Creation**: Uses Spotify's API to create new playlists and add tracks
-
-## Limitations
-
-- Genre detection depends on Spotify's genre data for artists
-- Some tracks may not have clear genre information
-- Rate limiting applies based on Spotify's API limits
-- Requires active internet connection
-
-## Troubleshooting
-
-### "Authentication failed"
-- Check your Spotify Client ID and Secret
-- Ensure redirect URI matches exactly: `http://localhost:5000/callback`
-- Make sure your Spotify app is not in development mode restrictions
-
-### "No genres found"
-- Some tracks may not have genre information in Spotify's database
-- This is normal for very new releases or obscure artists
-
-### App running slowly
-- Genre analysis can take time for large playlists
-- The app processes tracks in batches to respect API limits
+### API Endpoints
+- `GET /api/current-playback` - Get current playback information (JSON)
+- `GET /api/album/<album_id>` - Get album details (JSON)
 
 ## Contributing
 
-Feel free to submit issues, fork the repository, and create pull requests for any improvements.
+Contributions are welcome! Please feel free to submit issues, fork the repository, and create pull requests for improvements.
 
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+*Built with ❤️ for music lovers who want to better organize and understand their Spotify libraries.*

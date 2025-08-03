@@ -3,7 +3,8 @@ import os
 from utils.auth import get_spotify_oauth, get_spotify_client
 from utils.spotify_api import (
     get_user_playlists, get_user_liked_songs,
-    get_current_playback, get_tracks_from_playlist
+    get_current_playback, get_tracks_from_playlist,
+    detect_duplicate_liked_songs, unlike_track, merge_all_duplicates
 )
 from utils.genre_cache import enrich_tracks_with_cached_genres
 
@@ -107,6 +108,24 @@ def view_liked_songs():
         flash(f'Error loading liked songs: {str(e)}', 'error')
         return redirect(url_for('index'))
 
+@app.route('/detect-duplicates')
+def detect_duplicates():
+    """Detect duplicate songs in liked songs"""
+    if 'token_info' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        sp = get_spotify_client(session['token_info'])
+        user_info = sp.current_user()
+        duplicates = detect_duplicate_liked_songs(sp)
+        
+        return render_template('duplicates.html', 
+                             user=user_info,
+                             duplicates=duplicates)
+    except Exception as e:
+        flash(f'Error detecting duplicates: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
 @app.route('/api/current-playback')
 def api_current_playback():
     """API endpoint to get current playback info"""
@@ -120,6 +139,50 @@ def api_current_playback():
         return jsonify({
             'playback': playback
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/unlike-track', methods=['POST'])
+def api_unlike_track():
+    """API endpoint to unlike a track"""
+    if 'token_info' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        track_id = data.get('track_id')
+        
+        if not track_id:
+            return jsonify({'error': 'Track ID is required'}), 400
+        
+        sp = get_spotify_client(session['token_info'])
+        success = unlike_track(sp, track_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Track unliked successfully'})
+        else:
+            return jsonify({'error': 'Failed to unlike track'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/merge-all-duplicates', methods=['POST'])
+def api_merge_all_duplicates():
+    """API endpoint to merge all duplicates by keeping the first instance of each"""
+    if 'token_info' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        sp = get_spotify_client(session['token_info'])
+        result = merge_all_duplicates(sp)
+        
+        return jsonify({
+            'success': True,
+            'tracks_removed': result['tracks_removed'],
+            'duplicate_groups_processed': result['duplicate_groups_processed'],
+            'message': f'Successfully merged duplicates! Removed {result["tracks_removed"]} tracks.'
+        })
+            
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
