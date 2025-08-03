@@ -1,0 +1,15 @@
+[project]
+name = "spotify-organiser"
+version = "0.1.0"
+description = "A Streamlit app to sort Spotify playlists by genre"
+authors = [
+  { name = "KshKnsl", email = "kushkansal0@gmail.com" }
+]
+requires-python = ">=3.9"
+
+dependencies = [
+  "spotipy",
+  "streamlit",
+  "python-dotenv",
+  "pandas"
+]
