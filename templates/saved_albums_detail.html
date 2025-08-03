@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('index') }}" class="text-spotify-green hover:text-green-400 transition-colors">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+    </a>
+</div>
+
+<div class="bg-spotify-black rounded-lg p-6 mb-6">
+    <div class="flex items-center space-x-6">
+        <div class="w-32 h-32 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
+            <i class="fas fa-compact-disc text-4xl text-white"></i>
+        </div>
+        
+        <div class="flex-1">
+            <h1 class="text-3xl font-bold mb-2">Saved Albums</h1>
+            <p class="text-spotify-light-gray mb-3">Your personal collection of saved albums</p>
+            <div class="flex items-center space-x-4 text-sm text-spotify-light-gray">
+                <span><i class="fas fa-compact-disc mr-1"></i>{{ saved_albums|length }} albums</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-spotify-black rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Your Saved Albums</h2>
+    
+    {% if saved_albums %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for item in saved_albums %}
+                {% set album = item.album %}
+                <div class="bg-spotify-gray rounded-lg p-4 hover:bg-opacity-80 transition-all cursor-pointer group"
+                     onclick="showAlbumDetails('{{ album.id }}', '{{ album.name|e }}', '{{ album.artists[0].name|e }}')">
+                    
+                    {% if album.images and album.images|length > 0 %}
+                        <img src="{{ album.images[0].url }}" alt="{{ album.name }}" 
+                             class="w-full aspect-square rounded-lg mb-4 group-hover:shadow-lg transition-shadow">
+                    {% else %}
+                        <div class="w-full aspect-square bg-spotify-dark rounded-lg mb-4 flex items-center justify-center">
+                            <i class="fas fa-compact-disc text-4xl text-spotify-light-gray"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <h3 class="font-bold text-white mb-2 truncate">{{ album.name }}</h3>
+                    <p class="text-spotify-light-gray text-sm mb-2 truncate">
+                        by {{ album.artists[0].name }}{% if album.artists|length > 1 %} + {{ album.artists|length - 1 }} more{% endif %}
+                    </p>
+                    <div class="flex justify-between items-center text-xs text-spotify-light-gray">
+                        <span>{{ album.release_date[:4] if album.release_date else 'Unknown' }}</span>
+                        <span>{{ album.total_tracks }} tracks</span>
+                    </div>
+                    <div class="text-xs text-spotify-light-gray mt-1">
+                        Added {{ item.added_at[:10] if item.added_at else 'Unknown' }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if saved_albums|length >= 50 %}
+            <div class="text-center mt-6">
+                <p class="text-spotify-light-gray">Showing first 50 saved albums</p>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-compact-disc text-4xl text-spotify-gray mb-4"></i>
+            <p class="text-spotify-light-gray">No saved albums found</p>
+            <p class="text-sm text-spotify-light-gray mt-2">Start saving albums on Spotify to see them here!</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Album Details Modal -->
+<div id="albumDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-spotify-black rounded-lg p-6 max-w-4xl w-full mx-4 max-h-96 overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Album Details</h3>
+            <button onclick="closeAlbumDetails()" class="text-spotify-light-gray hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="albumDetailsContent">
+            <div class="flex justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-spotify-green"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAlbumDetails(albumId, albumName, artistName) {
+    const modal = document.getElementById('albumDetailsModal');
+    const content = document.getElementById('albumDetailsContent');
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    content.innerHTML = `
+        <div class="flex justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-spotify-green"></div>
+        </div>
+    `;
+    
+    // Get album details from Spotify
+    fetch(`/api/album/${albumId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                content.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-red-400">Error: ${data.error}</p>
+                    </div>
+                `;
+            } else {
+                const album = data;
+                let tracksHtml = '';
+                
+                if (album.tracks && album.tracks.items) {
+                    tracksHtml = album.tracks.items.map((track, index) => `
+                        <div class="flex items-center p-2 rounded hover:bg-spotify-gray transition-colors cursor-pointer"
+                             onclick="showAudioAnalysis('${track.id}', '${track.name}', '${track.artists[0].name}')">
+                            <div class="w-8 text-spotify-light-gray text-sm">${index + 1}</div>
+                            <div class="flex-1">
+                                <div class="font-medium">${track.name}</div>
+                                <div class="text-sm text-spotify-light-gray">${track.artists[0].name}</div>
+                            </div>
+                            <div class="text-sm text-spotify-light-gray">
+                                ${track.duration_ms ? Math.floor(track.duration_ms / 60000) + ':' + String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, '0') : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                content.innerHTML = `
+                    <div class="flex mb-6">
+                        <img src="${album.images && album.images[0] ? album.images[0].url : ''}" 
+                             alt="${albumName}" class="w-48 h-48 rounded-lg mr-6">
+                        <div class="flex-1">
+                            <h4 class="text-2xl font-bold mb-2">${albumName}</h4>
+                            <p class="text-spotify-light-gray mb-2">by ${artistName}</p>
+                            <div class="space-y-1 text-sm text-spotify-light-gray">
+                                <p>Released: ${album.release_date || 'Unknown'}</p>
+                                <p>Total tracks: ${album.total_tracks || 0}</p>
+                                <p>Type: ${album.album_type || 'Album'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <h5 class="font-bold mb-3">Tracks</h5>
+                        ${tracksHtml}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            content.innerHTML = `
+                <div class="text-center py-8">
+                    <p class="text-red-400">Error loading album details</p>
+                </div>
+            `;
+        });
+}
+
+function closeAlbumDetails() {
+    const modal = document.getElementById('albumDetailsModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function showAudioAnalysis(trackId, trackName, artistName) {
+    // Close album details modal first
+    closeAlbumDetails();
+    
+    // Create audio analysis modal (similar to other pages)
+    const modal = document.createElement('div');
+    modal.id = 'audioAnalysisModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-spotify-black rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Audio Analysis</h3>
+                <button onclick="this.closest('#audioAnalysisModal').remove()" class="text-spotify-light-gray hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="flex justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-spotify-green"></div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    fetch(`/api/audio-analysis/${trackId}`)
+        .then(response => response.json())
+        .then(data => {
+            const content = modal.querySelector('div:last-child');
+            if (data.error) {
+                content.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-red-400">Error: ${data.error}</p>
+                    </div>
+                `;
+            } else {
+                const features = data.features;
+                content.innerHTML = `
+                    <div class="mb-4">
+                        <h4 class="font-bold">${trackName}</h4>
+                        <p class="text-spotify-light-gray">by ${artistName}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Tempo</div>
+                            <div class="text-lg font-bold">${features.tempo ? Math.round(features.tempo) + ' BPM' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Key</div>
+                            <div class="text-lg font-bold">${features.key !== null ? features.key : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Energy</div>
+                            <div class="text-lg font-bold">${features.energy ? Math.round(features.energy * 100) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Danceability</div>
+                            <div class="text-lg font-bold">${features.danceability ? Math.round(features.danceability * 100) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Valence</div>
+                            <div class="text-lg font-bold">${features.valence ? Math.round(features.valence * 100) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Loudness</div>
+                            <div class="text-lg font-bold">${features.loudness ? Math.round(features.loudness) + ' dB' : 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            const content = modal.querySelector('div:last-child');
+            content.innerHTML = `
+                <div class="text-center py-8">
+                    <p class="text-red-400">Error loading analysis</p>
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}

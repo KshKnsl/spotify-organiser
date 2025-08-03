@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Spotify Organiser{% endblock %}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'spotify-green': '#1db954',
+                        'spotify-black': '#191414',
+                        'spotify-dark': '#121212',
+                        'spotify-gray': '#535353',
+                        'spotify-light-gray': '#b3b3b3'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-spotify-dark text-white min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-spotify-black border-b border-spotify-gray">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="flex items-center space-x-2">
+                        <i class="fab fa-spotify text-spotify-green text-2xl"></i>
+                        <span class="text-xl font-bold">Spotify Organiser</span>
+                    </a>
+                </div>
+                
+                {% if session.token_info %}
+                <div class="flex items-center space-x-4">
+                    <span class="text-spotify-light-gray">Welcome back!</span>
+                    <a href="{{ url_for('logout') }}" 
+                       class="bg-spotify-gray hover:bg-spotify-light-gray text-white px-4 py-2 rounded-full transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-900 text-red-200 border border-red-700{% else %}bg-green-900 text-green-200 border border-green-700{% endif %}">
+                        {{ message }}
+                        <button onclick="this.parentElement.remove()" class="float-right font-bold">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

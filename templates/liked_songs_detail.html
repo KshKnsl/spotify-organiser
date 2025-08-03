@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('index') }}" class="text-spotify-green hover:text-green-400 transition-colors">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+    </a>
+</div>
+
+<div class="bg-spotify-black rounded-lg p-6 mb-6">
+    <div class="flex items-center space-x-6">
+        <div class="w-32 h-32 bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center">
+            <i class="fas fa-heart text-4xl text-white"></i>
+        </div>
+        
+        <div class="flex-1">
+            <h1 class="text-3xl font-bold mb-2">Liked Songs</h1>
+            <p class="text-spotify-light-gray mb-3">Your personal collection of liked tracks</p>
+            <div class="flex items-center space-x-4 text-sm text-spotify-light-gray">
+                <span><i class="fas fa-music mr-1"></i>{{ liked_songs|length }} tracks</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-spotify-black rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Your Liked Songs</h2>
+    
+    {% if liked_songs %}
+        <div class="space-y-2">
+            {% for item in liked_songs %}
+                {% set track = item.track %}
+                <div class="flex items-center p-3 rounded-lg hover:bg-spotify-gray transition-colors group cursor-pointer"
+                     onclick="showAudioAnalysis('{{ track.id }}', '{{ track.name|e }}', '{{ track.artists[0].name|e }}')">
+                    <div class="w-8 text-spotify-light-gray text-sm">{{ loop.index }}</div>
+                    
+                    {% if track.album.images and track.album.images|length > 0 %}
+                        <img src="{{ track.album.images[-1].url }}" alt="{{ track.name }}" 
+                             class="w-12 h-12 rounded mr-4">
+                    {% else %}
+                        <div class="w-12 h-12 bg-spotify-gray rounded mr-4 flex items-center justify-center">
+                            <i class="fas fa-music text-spotify-light-gray"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="flex-1">
+                        <div class="font-medium">{{ track.name }}</div>
+                        <div class="text-sm text-spotify-light-gray">
+                            {{ track.artists[0].name }}{% if track.artists|length > 1 %} + {{ track.artists|length - 1 }} more{% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="text-sm text-spotify-light-gray mr-4">{{ track.album.name }}</div>
+                    
+                    <div class="text-sm text-spotify-light-gray mr-4">
+                        Added {{ item.added_at[:10] if item.added_at else 'Unknown' }}
+                    </div>
+                    
+                    <div class="text-sm text-spotify-light-gray">
+                        {% if track.duration_ms %}
+                            {{ '%d:%02d'|format((track.duration_ms / 60000)|int, ((track.duration_ms % 60000) / 1000)|int) }}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity ml-4">
+                        <i class="fas fa-chart-line text-spotify-green"></i>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if liked_songs|length >= 100 %}
+            <div class="text-center mt-6">
+                <p class="text-spotify-light-gray">Showing first 100 liked songs</p>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-heart text-4xl text-spotify-gray mb-4"></i>
+            <p class="text-spotify-light-gray">No liked songs found</p>
+            <p class="text-sm text-spotify-light-gray mt-2">Start liking songs on Spotify to see them here!</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Audio Analysis Modal -->
+<div id="audioAnalysisModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-spotify-black rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Audio Analysis</h3>
+            <button onclick="closeAudioAnalysis()" class="text-spotify-light-gray hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="audioAnalysisContent">
+            <div class="flex justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-spotify-green"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAudioAnalysis(trackId, trackName, artistName) {
+    const modal = document.getElementById('audioAnalysisModal');
+    const content = document.getElementById('audioAnalysisContent');
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    content.innerHTML = `
+        <div class="flex justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-spotify-green"></div>
+        </div>
+    `;
+    
+    fetch(`/api/audio-analysis/${trackId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                content.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-red-400">Error: ${data.error}</p>
+                    </div>
+                `;
+            } else {
+                const features = data.features;
+                content.innerHTML = `
+                    <div class="mb-4">
+                        <h4 class="font-bold">${trackName}</h4>
+                        <p class="text-spotify-light-gray">by ${artistName}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Tempo</div>
+                            <div class="text-lg font-bold">${features.tempo ? Math.round(features.tempo) + ' BPM' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Key</div>
+                            <div class="text-lg font-bold">${features.key !== null ? features.key : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Energy</div>
+                            <div class="text-lg font-bold">${features.energy ? Math.round(features.energy * 100) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Danceability</div>
+                            <div class="text-lg font-bold">${features.danceability ? Math.round(features.danceability * 100) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Valence</div>
+                            <div class="text-lg font-bold">${features.valence ? Math.round(features.valence * 100) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-spotify-gray p-3 rounded">
+                            <div class="text-sm text-spotify-light-gray">Loudness</div>
+                            <div class="text-lg font-bold">${features.loudness ? Math.round(features.loudness) + ' dB' : 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            content.innerHTML = `
+                <div class="text-center py-8">
+                    <p class="text-red-400">Error loading analysis</p>
+                </div>
+            `;
+        });
+}
+
+function closeAudioAnalysis() {
+    const modal = document.getElementById('audioAnalysisModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+</script>
+{% endblock %}
