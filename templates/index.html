@@ -1,33 +1,56 @@
-{% extends "base_tailwind.html" %}
+{% extends "base.html" %}
 
 {% block content %}
 <!-- Current Playback Section -->
 {% if current_playback and current_playback.item %}
-<div class="mb-8 bg-spotify-black rounded-lg p-6 border border-spotify-gray">
+<div class="current-playback-section mb-8 bg-[#191414] rounded-lg p-6 border border-[#535353]">
     <h2 class="text-2xl font-bold mb-4 flex items-center">
-        <i class="fas fa-play-circle text-spotify-green mr-3"></i>
+        <i class="fas fa-play-circle text-[#1db954] mr-3"></i>
         Currently Playing
     </h2>
     <div class="flex items-center space-x-4">
         {% if current_playback.item.album.images %}
             <img src="{{ current_playback.item.album.images[0].url }}" 
                  alt="{{ current_playback.item.name }}" 
-                 class="w-20 h-20 rounded-lg shadow-lg">
+                 class="album-image w-20 h-20 rounded-lg shadow-lg">
         {% endif %}
         <div class="flex-grow">
-            <h3 class="text-xl font-semibold">{{ current_playback.item.name }}</h3>
-            <p class="text-spotify-light-gray">by {{ current_playback.item.artists[0].name }}</p>
-            <p class="text-sm text-spotify-gray">{{ current_playback.item.album.name }}</p>
+            <h3 class="track-name text-xl font-semibold">{{ current_playback.item.name }}</h3>
+            <p class="artist-name text-[#b3b3b3]">by {{ current_playback.item.artists[0].name }}</p>
+            <p class="album-name text-sm text-[#535353]">{{ current_playback.item.album.name }}</p>
             <div class="mt-2 flex items-center space-x-2">
-                <span class="text-xs text-spotify-light-gray">
+                <span class="play-status text-xs text-[#b3b3b3]">
                     {% if current_playback.is_playing %}
-                        <i class="fas fa-play text-spotify-green"></i> Playing
+                        <i class="fas fa-play text-[#1db954]"></i> Playing
                     {% else %}
-                        <i class="fas fa-pause text-spotify-gray"></i> Paused
+                        <i class="fas fa-pause text-[#535353]"></i> Paused
                     {% endif %}
                 </span>
-                <button onclick="showAudioAnalysis('{{ current_playback.item.id }}')" 
-                        class="text-xs bg-spotify-green text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">
+                <button data-track-id="{{ current_playback.item.id }}" 
+                        class="current-track-analysis-btn text-xs bg-[#1db954] text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">
+                    <i class="fas fa-chart-line mr-1"></i>Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Hidden placeholder for when no music is playing -->
+<div class="current-playback-section mb-8 bg-[#191414] rounded-lg p-6 border border-[#535353]" style="display: none;">
+    <h2 class="text-2xl font-bold mb-4 flex items-center">
+        <i class="fas fa-play-circle text-[#1db954] mr-3"></i>
+        Currently Playing
+    </h2>
+    <div class="flex items-center space-x-4">
+        <img src="" alt="" class="album-image w-20 h-20 rounded-lg shadow-lg" style="display: none;">
+        <div class="flex-grow">
+            <h3 class="track-name text-xl font-semibold"></h3>
+            <p class="artist-name text-[#b3b3b3]"></p>
+            <p class="album-name text-sm text-[#535353]"></p>
+            <div class="mt-2 flex items-center space-x-2">
+                <span class="play-status text-xs text-[#b3b3b3]"></span>
+                <button data-track-id="" 
+                        class="current-track-analysis-btn text-xs bg-[#1db954] text-white px-2 py-1 rounded hover:bg-green-600 transition-colors">
                     <i class="fas fa-chart-line mr-1"></i>Analysis
                 </button>
             </div>
@@ -37,60 +60,60 @@
 {% endif %}
 
 <!-- Main Content Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <!-- Playlists Section -->
-    <div class="bg-spotify-black rounded-lg p-6 border border-spotify-gray">
+    <div class="bg-[#191414] rounded-lg p-6 border border-[#535353]">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold flex items-center">
-                <i class="fas fa-list text-spotify-green mr-2"></i>
+                <i class="fas fa-list text-[#1db954] mr-2"></i>
                 Your Playlists
             </h2>
-            <span class="text-sm text-spotify-light-gray">{{ playlists|length }} playlists</span>
+            <span class="text-sm text-[#b3b3b3]">{{ playlists|length }} playlists</span>
         </div>
         
         {% if playlists %}
             <div class="space-y-3 max-h-96 overflow-y-auto">
                 {% for playlist in playlists[:10] %}
-                    <div onclick="window.location.href='{{ url_for('view_playlist', playlist_id=playlist.id) }}'" 
-                         class="flex items-center space-x-3 p-3 rounded-lg hover:bg-spotify-gray cursor-pointer transition-colors group">
+                    <div data-playlist-id="{{ playlist.id }}" 
+                         class="playlist-item flex items-center space-x-3 p-3 rounded-lg hover:bg-[#535353] cursor-pointer transition-colors group">
                         {% if playlist.images and playlist.images|length > 0 %}
                             <img src="{{ playlist.images[0].url }}" alt="{{ playlist.name }}" 
                                  class="w-12 h-12 rounded-lg">
                         {% else %}
-                            <div class="w-12 h-12 bg-spotify-gray rounded-lg flex items-center justify-center">
-                                <i class="fas fa-music text-spotify-light-gray"></i>
+                            <div class="w-12 h-12 bg-[#535353] rounded-lg flex items-center justify-center">
+                                <i class="fas fa-music text-[#b3b3b3]"></i>
                             </div>
                         {% endif %}
                         <div class="flex-grow min-w-0">
-                            <h3 class="font-medium truncate group-hover:text-spotify-green transition-colors">
+                            <h3 class="font-medium truncate group-hover:text-[#1db954] transition-colors">
                                 {{ playlist.name }}
                             </h3>
-                            <p class="text-sm text-spotify-light-gray">{{ playlist.tracks.total }} tracks</p>
+                            <p class="text-sm text-[#b3b3b3]">{{ playlist.tracks.total }} tracks</p>
                         </div>
-                        <i class="fas fa-chevron-right text-spotify-gray group-hover:text-spotify-green transition-colors"></i>
+                        <i class="fas fa-chevron-right text-[#535353] group-hover:text-[#1db954] transition-colors"></i>
                     </div>
                 {% endfor %}
             </div>
             {% if playlists|length > 10 %}
-                <p class="text-sm text-spotify-light-gray mt-3 text-center">And {{ playlists|length - 10 }} more...</p>
+                <p class="text-sm text-[#b3b3b3] mt-3 text-center">And {{ playlists|length - 10 }} more...</p>
             {% endif %}
         {% else %}
             <div class="text-center py-8">
-                <i class="fas fa-music text-4xl text-spotify-gray mb-3"></i>
-                <p class="text-spotify-light-gray">No playlists found</p>
+                <i class="fas fa-music text-4xl text-[#535353] mb-3"></i>
+                <p class="text-[#b3b3b3]">No playlists found</p>
             </div>
         {% endif %}
     </div>
 
     <!-- Liked Songs Section -->
-    <div class="bg-spotify-black rounded-lg p-6 border border-spotify-gray">
+    <div class="bg-[#191414] rounded-lg p-6 border border-[#535353]">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold flex items-center">
                 <i class="fas fa-heart text-red-500 mr-2"></i>
                 Liked Songs
             </h2>
             <a href="{{ url_for('view_liked_songs') }}" 
-               class="text-sm text-spotify-green hover:text-green-400 transition-colors">
+               class="text-sm text-[#1db954] hover:text-green-400 transition-colors">
                 View All <i class="fas fa-arrow-right ml-1"></i>
             </a>
         </div>
@@ -99,64 +122,28 @@
             <div class="space-y-3 max-h-96 overflow-y-auto">
                 {% for item in liked_songs[:8] %}
                     {% set track = item.track %}
-                    <div class="flex items-center space-x-3 p-2 rounded-lg hover:bg-spotify-gray transition-colors group">
+                    {% if track and track.name and track.name.strip() %}
+                    <div class="flex items-center space-x-3 p-2 rounded-lg hover:bg-[#535353] transition-colors group">
                         {% if track.album.images %}
                             <img src="{{ track.album.images[-1].url }}" alt="{{ track.name }}" 
                                  class="w-10 h-10 rounded">
                         {% endif %}
                         <div class="flex-grow min-w-0">
                             <h4 class="font-medium text-sm truncate">{{ track.name }}</h4>
-                            <p class="text-xs text-spotify-light-gray">{{ track.artists[0].name }}</p>
+                            <p class="text-xs text-[#b3b3b3]">{{ track.artists[0].name if track.artists else 'Unknown Artist' }}</p>
                         </div>
-                        <button onclick="showAudioAnalysis('{{ track.id }}')" 
-                                class="opacity-0 group-hover:opacity-100 text-xs bg-spotify-green text-white px-2 py-1 rounded transition-all">
+                        <button data-track-id="{{ track.id }}" 
+                                class="audio-analysis-btn opacity-0 group-hover:opacity-100 text-xs bg-[#1db954] text-white px-2 py-1 rounded transition-all">
                             <i class="fas fa-chart-line"></i>
                         </button>
                     </div>
+                    {% endif %}
                 {% endfor %}
             </div>
         {% else %}
             <div class="text-center py-8">
-                <i class="fas fa-heart text-4xl text-spotify-gray mb-3"></i>
-                <p class="text-spotify-light-gray">No liked songs found</p>
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- Saved Albums Section -->
-    <div class="bg-spotify-black rounded-lg p-6 border border-spotify-gray">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold flex items-center">
-                <i class="fas fa-compact-disc text-purple-500 mr-2"></i>
-                Saved Albums
-            </h2>
-            <a href="{{ url_for('view_saved_albums') }}" 
-               class="text-sm text-spotify-green hover:text-green-400 transition-colors">
-                View All <i class="fas fa-arrow-right ml-1"></i>
-            </a>
-        </div>
-        
-        {% if saved_albums %}
-            <div class="space-y-3 max-h-96 overflow-y-auto">
-                {% for item in saved_albums[:8] %}
-                    {% set album = item.album %}
-                    <div class="flex items-center space-x-3 p-2 rounded-lg hover:bg-spotify-gray cursor-pointer transition-colors group">
-                        {% if album.images %}
-                            <img src="{{ album.images[-1].url }}" alt="{{ album.name }}" 
-                                 class="w-10 h-10 rounded">
-                        {% endif %}
-                        <div class="flex-grow min-w-0">
-                            <h4 class="font-medium text-sm truncate">{{ album.name }}</h4>
-                            <p class="text-xs text-spotify-light-gray">{{ album.artists[0].name }} • {{ album.release_date[:4] }}</p>
-                        </div>
-                        <span class="text-xs text-spotify-gray">{{ album.total_tracks }} tracks</span>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-8">
-                <i class="fas fa-compact-disc text-4xl text-spotify-gray mb-3"></i>
-                <p class="text-spotify-light-gray">No saved albums found</p>
+                <i class="fas fa-heart text-4xl text-[#535353] mb-3"></i>
+                <p class="text-[#b3b3b3]">No liked songs found</p>
             </div>
         {% endif %}
     </div>
@@ -164,16 +151,16 @@
 
 <!-- Audio Analysis Modal -->
 <div id="audioAnalysisModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-spotify-black rounded-lg p-6 max-w-2xl w-full max-h-96 overflow-y-auto border border-spotify-gray">
+    <div class="bg-[#191414] rounded-lg p-6 max-w-2xl w-full max-h-96 overflow-y-auto border border-[#535353]">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold">Audio Analysis</h3>
-            <button onclick="closeAudioAnalysis()" class="text-spotify-light-gray hover:text-white">
+            <button onclick="closeAudioAnalysis()" class="text-[#b3b3b3] hover:text-white">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         <div id="audioAnalysisContent">
             <div class="flex items-center justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-spotify-green"></div>
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1db954]"></div>
                 <span class="ml-2">Loading analysis...</span>
             </div>
         </div>
@@ -183,18 +170,113 @@
 
 {% block scripts %}
 <script>
-// Update current playback every 3 minutes
-setInterval(updateCurrentPlayback, 180000);
+// Update current playback every 10 seconds
+let playbackUpdateInterval;
+
+// Add event listeners when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Start updating current playback immediately and then every 10 seconds
+    updateCurrentPlayback();
+    playbackUpdateInterval = setInterval(updateCurrentPlayback, 10000);
+    
+    // Playlist click handlers
+    document.querySelectorAll('.playlist-item').forEach(function(element) {
+        element.addEventListener('click', function() {
+            const playlistId = this.getAttribute('data-playlist-id');
+            window.location.href = `/playlist/${playlistId}`;
+        });
+    });
+    
+    // Audio analysis button handlers
+    document.querySelectorAll('.audio-analysis-btn, .current-track-analysis-btn').forEach(function(element) {
+        element.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent playlist click when clicking button
+            const trackId = this.getAttribute('data-track-id');
+            showAudioAnalysis(trackId);
+        });
+    });
+});
 
 function updateCurrentPlayback() {
     fetch('/api/current-playback')
         .then(response => response.json())
         .then(data => {
-            if (data.currently_playing && data.currently_playing.item) {
-                location.reload(); // Simple refresh for now
+            if (data.playback && data.playback.item) {
+                updateCurrentPlaybackUI(data.playback);
+            } else {
+                // No current playback, hide the section
+                const playbackSection = document.querySelector('.current-playback-section');
+                if (playbackSection) {
+                    playbackSection.style.display = 'none';
+                }
             }
         })
-        .catch(error => console.log('Error updating playback:', error));
+        .catch(error => {
+            console.log('Error updating playback:', error);
+            // On error, just hide the current playback section
+            const playbackSection = document.querySelector('.current-playback-section');
+            if (playbackSection) {
+                playbackSection.style.display = 'none';
+            }
+        });
+}
+
+function updateCurrentPlaybackUI(playback) {
+    const playbackSection = document.querySelector('.current-playback-section');
+    if (!playbackSection) return;
+    
+    // Show the section
+    playbackSection.style.display = 'block';
+    
+    // Update album image
+    const albumImg = playbackSection.querySelector('.album-image');
+    if (albumImg && playback.item.album.images && playback.item.album.images.length > 0) {
+        albumImg.src = playback.item.album.images[0].url;
+        albumImg.alt = playback.item.name;
+    }
+    
+    // Update track name
+    const trackName = playbackSection.querySelector('.track-name');
+    if (trackName) {
+        trackName.textContent = playback.item.name;
+    }
+    
+    // Update artist name
+    const artistName = playbackSection.querySelector('.artist-name');
+    if (artistName) {
+        artistName.textContent = `by ${playback.item.artists[0].name}`;
+    }
+    
+    // Update album name
+    const albumName = playbackSection.querySelector('.album-name');
+    if (albumName) {
+        albumName.textContent = playback.item.album.name;
+    }
+    
+    // Update play/pause status
+    const playStatus = playbackSection.querySelector('.play-status');
+    if (playStatus) {
+        if (playback.is_playing) {
+            playStatus.innerHTML = '<i class="fas fa-play text-[#1db954]"></i> Playing';
+        } else {
+            playStatus.innerHTML = '<i class="fas fa-pause text-[#535353]"></i> Paused';
+        }
+    }
+    
+    // Update analysis button with new track ID
+    const analysisBtn = playbackSection.querySelector('.current-track-analysis-btn');
+    if (analysisBtn) {
+        analysisBtn.setAttribute('data-track-id', playback.item.id);
+        // Re-attach event listener for the new track
+        analysisBtn.removeEventListener('click', handleAnalysisClick);
+        analysisBtn.addEventListener('click', handleAnalysisClick);
+    }
+}
+
+function handleAnalysisClick(e) {
+    e.stopPropagation();
+    const trackId = this.getAttribute('data-track-id');
+    showAudioAnalysis(trackId);
 }
 
 function showAudioAnalysis(trackId) {
@@ -247,7 +329,7 @@ function showAudioAnalysis(trackId) {
                 document.getElementById('audioAnalysisContent').innerHTML = content;
             } else {
                 document.getElementById('audioAnalysisContent').innerHTML = 
-                    '<p class="text-center text-spotify-light-gray">Analysis not available for this track.</p>';
+                    '<p class="text-center text-[#b3b3b3]">Analysis not available for this track.</p>';
             }
         })
         .catch(error => {

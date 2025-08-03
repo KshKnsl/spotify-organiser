@@ -35,14 +35,14 @@ A Flask web application that helps you organize your Spotify playlists by automa
 ### 2. Installation
 
 1. Clone or download this repository
-2. Install dependencies using UV (recommended):
+2. Install dependencies using uv (recommended) or pip:
 
 ```bash
-uv sync
+# Using uv (recommended)
 uv add spotipy flask python-dotenv
 
-# Alternative: using pip
-pip install -r requirements.txt
+# Or using pip
+pip install spotipy flask python-dotenv
 ```
 
 ### 3. Configuration
@@ -64,9 +64,8 @@ SECRET_KEY=your_secret_key_here_change_this_to_something_secure
 
 ### Running the Application
 
-1. Start the Flask development server with UV:
+1. Start the Flask development server:
 ```bash
-uv run app.py
 python app.py
 ```
 
