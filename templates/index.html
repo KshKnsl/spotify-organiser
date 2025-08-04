@@ -105,6 +105,10 @@
                 Liked Songs
             </h2>
             <div class="flex items-center space-x-3">
+                <a href="{{ url_for('genre_filter') }}" 
+                   class="text-sm text-[#1db954] hover:text-green-400 transition-colors">
+                    <i class="fas fa-filter mr-1"></i>Genre Filter
+                </a>
                 <a href="{{ url_for('detect_duplicates') }}" 
                    class="text-sm text-[#1db954] hover:text-green-400 transition-colors">
                     <i class="fas fa-copy mr-1"></i>Duplicates

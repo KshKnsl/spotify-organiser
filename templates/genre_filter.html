@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Filter by Genre{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-white">Create Genre Playlists</h1>
+        <a href="{{ url_for('index') }}" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+            Back to Dashboard
+        </a>
+    </div>
+    
+    <div class="bg-gray-800 rounded-lg p-6 mb-6">
+        <div class="mb-4">
+            <label for="genre-select" class="block text-sm font-medium text-gray-300 mb-2">
+                Select Genre (Optional - leave blank for all genres)
+            </label>
+            <select id="genre-select" class="w-full md:w-1/2 bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2">
+                <option value="">All Genres</option>
+            </select>
+        </div>
+        
+        <div class="flex gap-4">
+            <button id="create-playlists" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                Create Playlists
+            </button>
+            <button id="load-genres" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                Load Available Genres
+            </button>
+        </div>
+        
+        <div id="loading" class="hidden mt-4">
+            <div class="flex items-center text-gray-300">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Processing...
+            </div>
+        </div>
+        
+        <div id="status" class="mt-4 hidden"></div>
+    </div>
+    
+    <div id="results" class="hidden bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold text-white mb-4">Created Playlists</h2>
+        <div id="playlist-list" class="space-y-3"></div>
+    </div>
+</div>
+
+<script>
+document.getElementById('load-genres').addEventListener('click', async function() {
+    const button = this;
+    const loading = document.getElementById('loading');
+    const select = document.getElementById('genre-select');
+    
+    button.disabled = true;
+    button.textContent = 'Loading...';
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/available-genres');
+        const data = await response.json();
+        
+        if (response.ok) {
+            select.innerHTML = '<option value="">All Genres</option>';
+            data.genres.forEach(genre => {
+                const option = document.createElement('option');
+                option.value = genre;
+                option.textContent = genre.replace(/\b\w/g, l => l.toUpperCase());
+                select.appendChild(option);
+            });
+            
+            document.getElementById('status').innerHTML = '<div class="text-green-400">✓ Loaded ' + data.genres.length + ' genres</div>';
+            document.getElementById('status').classList.remove('hidden');
+        } else {
+            throw new Error(data.error || 'Failed to load genres');
+        }
+    } catch (error) {
+        document.getElementById('status').innerHTML = '<div class="text-red-400">✗ Error: ' + error.message + '</div>';
+        document.getElementById('status').classList.remove('hidden');
+    } finally {
+        loading.classList.add('hidden');
+        button.disabled = false;
+        button.textContent = 'Load Available Genres';
+    }
+});
+
+document.getElementById('create-playlists').addEventListener('click', async function() {
+    const button = this;
+    const loading = document.getElementById('loading');
+    const select = document.getElementById('genre-select');
+    const results = document.getElementById('results');
+    const playlistList = document.getElementById('playlist-list');
+    
+    button.disabled = true;
+    button.textContent = 'Creating...';
+    loading.classList.remove('hidden');
+    results.classList.add('hidden');
+    
+    try {
+        const genre_filter = select.value;
+        const response = await fetch('/api/create-genre-playlists', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ genre_filter: genre_filter || null })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('status').innerHTML = '<div class="text-green-400">✓ ' + data.message + '</div>';
+            document.getElementById('status').classList.remove('hidden');
+            
+            if (data.playlists.length > 0) {
+                playlistList.innerHTML = '';
+                data.playlists.forEach(playlist => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-700 rounded-lg p-4';
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold text-white">${playlist.name}</h3>
+                                <p class="text-gray-300 text-sm">Genre: ${playlist.genre} • ${playlist.track_count} tracks</p>
+                            </div>
+                            <a href="https://open.spotify.com/playlist/${playlist.playlist_id}" target="_blank" 
+                               class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                Open in Spotify
+                            </a>
+                        </div>
+                    `;
+                    playlistList.appendChild(div);
+                });
+                results.classList.remove('hidden');
+            }
+        } else {
+            throw new Error(data.error || 'Failed to create playlists');
+        }
+    } catch (error) {
+        document.getElementById('status').innerHTML = '<div class="text-red-400">✗ Error: ' + error.message + '</div>';
+        document.getElementById('status').classList.remove('hidden');
+    } finally {
+        loading.classList.add('hidden');
+        button.disabled = false;
+        button.textContent = 'Create Playlists';
+    }
+});
+</script>
+{% endblock %}

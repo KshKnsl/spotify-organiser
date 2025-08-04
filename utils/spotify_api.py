@@ -4,68 +4,68 @@ import json
 from .genre_cache import enrich_tracks_with_cached_genres
 
 def get_user_playlists(sp: spotipy.Spotify) -> List[Dict]:
-    playlists = []
-    results = sp.current_user_playlists()
-    while results:
-        playlists.extend(results['items'])
-        if results['next']:
-            results = sp.next(results)
+    pl = []
+    res = sp.current_user_playlists()
+    while res:
+        pl.extend(res['items'])
+        if res['next']:
+            res = sp.next(res)
         else:
             break
 
-    print(f"Finished fetching user playlists. Total: {len(playlists)}")
-    return playlists
+    print(f"Finished fetching user playlists. Total: {len(pl)}")
+    return pl
 
 
 def get_tracks_from_playlist(sp: spotipy.Spotify, playlist_id: str) -> List[Dict]:
-    tracks = []
-    results = sp.playlist_tracks(playlist_id)
+    tr = []
+    res = sp.playlist_tracks(playlist_id)
     
-    while results:
-        tracks.extend(results['items'])
-        if results['next']:
-            results = sp.next(results)
+    while res:
+        tr.extend(res['items'])
+        if res['next']:
+            res = sp.next(res)
         else:
             break
     
-    print(f"Finished fetching playlist tracks. Total: {len(tracks)}")
-    return tracks
+    print(f"Finished fetching playlist tracks. Total: {len(tr)}")
+    return tr
 
 
 def get_user_liked_songs(sp: spotipy.Spotify, limit: int = None) -> List[Dict]:
-    tracks = []
+    tr = []
     batch = 50
-    offset = 0
+    off = 0
     
     while True:
         try:
-            results = sp.current_user_saved_tracks(limit=batch, offset=offset)
-            if not results or not results['items']:
+            res = sp.current_user_saved_tracks(limit=batch, offset=off)
+            if not res or not res['items']:
                 break
                 
-            tracks.extend(results['items'])
+            tr.extend(res['items'])
             
-            if limit and len(tracks) >= limit:
-                tracks = tracks[:limit]
+            if limit and len(tr) >= limit:
+                tr = tr[:limit]
                 break
                 
-            if not results['next']:
+            if not res['next']:
                 break
                 
-            offset += batch
+            off += batch
             
         except Exception as e:
-            print(f"Error fetching liked songs at offset {offset}: {e}")
+            print(f"Error fetching liked songs at offset {off}: {e}")
             break
     
-    print(f"Finished fetching liked songs. Total: {len(tracks)}")
-    return tracks
+    print(f"Finished fetching liked songs. Total: {len(tr)}")
+    return tr
 
 
 def get_current_playback(sp: spotipy.Spotify) -> Optional[Dict]:
     try:
-        result = sp.current_playback()
-        return result
+        res = sp.current_playback()
+        return res
     except Exception as e:
         print(f"Error getting current playback: {e}")
         return None
@@ -74,35 +74,35 @@ def get_current_playback(sp: spotipy.Spotify) -> Optional[Dict]:
 def detect_duplicate_liked_songs(sp: spotipy.Spotify) -> List[Dict]:
     songs = get_user_liked_songs(sp)
     
-    groups = {}
-    dupes = []
+    grp = {}
+    dup = []
     
     for item in songs:
-        track = item.get('track')
-        if not track or not track.get('name'):
+        tr = item.get('track')
+        if not tr or not tr.get('name'):
             continue
             
-        name = track['name'].lower().strip()
-        artist = track['artists'][0]['name'].lower().strip() if track.get('artists') else 'unknown'
-        key = (name, artist)
+        name = tr['name'].lower().strip()
+        art = tr['artists'][0]['name'].lower().strip() if tr.get('artists') else 'unknown'
+        key = (name, art)
         
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(item)
+        if key not in grp:
+            grp[key] = []
+        grp[key].append(item)
     
-    for key, tracks in groups.items():
-        if len(tracks) > 1:
-            dupes.append({
-                'track_name': tracks[0]['track']['name'],
-                'artist_name': tracks[0]['track']['artists'][0]['name'] if tracks[0]['track'].get('artists') else 'Unknown Artist',
-                'duplicate_count': len(tracks),
-                'tracks': tracks
+    for key, tr in grp.items():
+        if len(tr) > 1:
+            dup.append({
+                'track_name': tr[0]['track']['name'],
+                'artist_name': tr[0]['track']['artists'][0]['name'] if tr[0]['track'].get('artists') else 'Unknown Artist',
+                'duplicate_count': len(tr),
+                'tracks': tr
             })
     
-    dupes.sort(key=lambda x: x['duplicate_count'], reverse=True)
+    dup.sort(key=lambda x: x['duplicate_count'], reverse=True)
     
-    print(f"Found {len(dupes)} sets of duplicate tracks in liked songs")
-    return dupes
+    print(f"Found {len(dup)} sets of duplicate tracks in liked songs")
+    return dup
 
 
 def unlike_track(sp: spotipy.Spotify, track_id: str) -> bool:
@@ -116,60 +116,123 @@ def unlike_track(sp: spotipy.Spotify, track_id: str) -> bool:
 
 def merge_all_duplicates(sp: spotipy.Spotify) -> Dict[str, int]:
     try:
-        dupes = detect_duplicate_liked_songs(sp)
-        removed = 0
+        dup = detect_duplicate_liked_songs(sp)
+        rem = 0
         ids = []
         
-        for group in dupes:
-            for item in group['tracks'][1:]:
+        for grp in dup:
+            for item in grp['tracks'][1:]:
                 ids.append(item['track']['id'])
         
         for i in range(0, len(ids), 50):
             batch = ids[i:i + 50]
             try:
                 sp.current_user_saved_tracks_delete(batch)
-                removed += len(batch)
+                rem += len(batch)
             except Exception as e:
                 print(f"Error removing batch: {e}")
         
-        return {'tracks_removed': removed, 'duplicate_groups_processed': len(dupes)}
+        return {'tracks_removed': rem, 'duplicate_groups_processed': len(dup)}
         
     except Exception as e:
         print(f"Error merging duplicates: {e}")
         return {'tracks_removed': 0, 'duplicate_groups_processed': 0}
 
-def create_playlist(sp: spotipy.Spotify, user_id: str, name: str, description: str = "", public: bool = True) -> Optional[Dict]:
+def create_genre_playlists(sp: spotipy.Spotify, genre_filter: str = None) -> Dict[str, any]:
     try:
-        result = sp.user_playlist_create(user_id, name, public=public, description=description)
-        print(f"=== CREATE_PLAYLIST (user={user_id}, name='{name}') - API Response ===")
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        print("==================================================================")
-        return result
+        usr = sp.current_user()
+        songs = get_user_liked_songs(sp)
+        
+        from .genre_cache import enrich_tracks_with_cached_genres
+        enr = enrich_tracks_with_cached_genres(sp, songs)
+        
+        gen_tr = {}
+        
+        for item in enr:
+            tr = item.get('track')
+            if not tr or not tr.get('artists'):
+                continue
+                
+            gen = tr['artists'][0].get('genres', [])
+            for g in gen:
+                if genre_filter and genre_filter.lower() not in g.lower():
+                    continue
+                if g not in gen_tr:
+                    gen_tr[g] = []
+                gen_tr[g].append(tr['uri'])
+        
+        crt = []
+        for g, uris in gen_tr.items():
+            if len(uris) >= 5:
+                name = f"Liked Songs - {g.title()}"
+                desc = f"Auto-generated playlist for {g} tracks from liked songs"
+                
+                pl = create_playlist(sp, usr['id'], name, desc)
+                if pl:
+                    ok = add_tracks_to_playlist(sp, pl['id'], uris)
+                    if ok:
+                        crt.append({
+                            'name': name,
+                            'genre': g,
+                            'track_count': len(uris),
+                            'playlist_id': pl['id']
+                        })
+        
+        return {
+            'playlists_created': len(crt),
+            'playlists': crt,
+            'total_genres': len(gen_tr)
+        }
+        
+    except Exception as e:
+        print(f"Error creating genre playlists: {e}")
+        return {'playlists_created': 0, 'playlists': [], 'total_genres': 0}
+
+def create_playlist(sp: spotipy.Spotify, user_id: str, name: str, desc: str) -> Dict[str, any]:
+    try:
+        pl = sp.user_playlist_create(user_id, name, public=False, description=desc)
+        return pl
     except Exception as e:
         print(f"Error creating playlist: {e}")
         return None
 
-
-def add_tracks_to_playlist(sp: spotipy.Spotify, playlist_id: str, track_uris: List[str]) -> bool:
+def add_tracks_to_playlist(sp: spotipy.Spotify, playlist_id: str, uris: List[str]) -> bool:
     try:
-        result = sp.playlist_add_items(playlist_id, track_uris)
-        print(f"=== ADD_TRACKS_TO_PLAYLIST ({playlist_id}, {len(track_uris)} tracks) - API Response ===")
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        print("================================================================================")
+        sz = 100
+        for i in range(0, len(uris), sz):
+            batch = uris[i:i + sz]
+            sp.playlist_add_items(playlist_id, batch)
         return True
     except Exception as e:
         print(f"Error adding tracks to playlist: {e}")
         return False
 
+def get_available_genres(sp: spotipy.Spotify) -> List[str]:
+    try:
+        songs = get_user_liked_songs(sp)
+        from .genre_cache import enrich_tracks_with_cached_genres
+        enr = enrich_tracks_with_cached_genres(sp, songs)
+        
+        all_gen = set()
+        for item in enr:
+            tr = item.get('track')
+            if tr and tr.get('artists'):
+                gen = tr['artists'][0].get('genres', [])
+                all_gen.update(gen)
+        
+        return sorted(list(all_gen))
+    except Exception as e:
+        print(f"Error getting genres: {e}")
+        return []
 
 def get_playlist_genres(sp: spotipy.Spotify, playlist_id: str) -> Dict[str, int]:
-    tracks = get_tracks_from_playlist(sp, playlist_id)
-    genres = {}
+    tr = get_tracks_from_playlist(sp, playlist_id)
+    gen = {}
     
-    for item in tracks:
+    for item in tr:
         if item['track'] and item['track']['artists']:
-            track_genres = get_genres_for_track(sp, item)
-            for genre in track_genres:
-                genres[genre] = genres.get(genre, 0) + 1
+            tr_gen = get_genres_for_track(sp, item)
+            for g in tr_gen:
+                gen[g] = gen.get(g, 0) + 1
     
-    return dict(sorted(genres.items(), key=lambda x: x[1], reverse=True))
+    return dict(sorted(gen.items(), key=lambda x: x[1], reverse=True))

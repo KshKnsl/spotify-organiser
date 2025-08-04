@@ -10,7 +10,7 @@ SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI', 'https://localhost:5000/callback')
 
-scope = "user-library-read user-library-modify playlist-read-private user-read-playback-state user-read-currently-playing user-read-recently-played user-top-read"
+scope = "user-library-read user-library-modify playlist-read-private playlist-modify-private playlist-modify-public user-read-playback-state user-read-currently-playing user-read-recently-played user-top-read"
 
 def get_spotify_oauth():
     return SpotifyOAuth(

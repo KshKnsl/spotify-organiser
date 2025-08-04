@@ -4,7 +4,8 @@ from utils.auth import get_spotify_oauth, get_spotify_client
 from utils.spotify_api import (
     get_user_playlists, get_user_liked_songs,
     get_current_playback, get_tracks_from_playlist,
-    detect_duplicate_liked_songs, unlike_track, merge_all_duplicates
+    detect_duplicate_liked_songs, unlike_track, merge_all_duplicates,
+    create_genre_playlists, get_available_genres
 )
 from utils.genre_cache import enrich_tracks_with_cached_genres
 
@@ -126,6 +127,21 @@ def detect_duplicates():
         flash(f'Error detecting duplicates: {str(e)}', 'error')
         return redirect(url_for('index'))
 
+@app.route('/genre-filter')
+def genre_filter():
+    """Genre filtering and playlist creation page"""
+    if 'token_info' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        sp = get_spotify_client(session['token_info'])
+        user_info = sp.current_user()
+        
+        return render_template('genre_filter.html', user=user_info)
+    except Exception as e:
+        flash(f'Error loading genre filter: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
 @app.route('/api/current-playback')
 def api_current_playback():
     """API endpoint to get current playback info"""
@@ -181,6 +197,43 @@ def api_merge_all_duplicates():
             'tracks_removed': result['tracks_removed'],
             'duplicate_groups_processed': result['duplicate_groups_processed'],
             'message': f'Successfully merged duplicates! Removed {result["tracks_removed"]} tracks.'
+        })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/available-genres')
+def api_available_genres():
+    """API endpoint to get all available genres from liked songs"""
+    if 'token_info' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        sp = get_spotify_client(session['token_info'])
+        genres = get_available_genres(sp)
+        return jsonify({'genres': genres})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/create-genre-playlists', methods=['POST'])
+def api_create_genre_playlists():
+    """API endpoint to create genre-based playlists"""
+    if 'token_info' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        genre_filter = data.get('genre_filter') if data else None
+        
+        sp = get_spotify_client(session['token_info'])
+        result = create_genre_playlists(sp, genre_filter)
+        
+        return jsonify({
+            'success': True,
+            'playlists_created': result['playlists_created'],
+            'playlists': result['playlists'],
+            'total_genres': result['total_genres'],
+            'message': f'Successfully created {result["playlists_created"]} genre playlists!'
         })
             
     except Exception as e:
