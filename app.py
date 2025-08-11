@@ -2,6 +2,10 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import os
 import csv
 import io
+
+app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
+
 from utils.auth import get_spotify_oauth, get_spotify_client
 from utils.spotify_api import (
     get_user_playlists, get_user_liked_songs,
@@ -10,6 +14,8 @@ from utils.spotify_api import (
     create_genre_playlists, get_available_genres,
     get_song_statistics, get_smart_recommendations
 )
+from utils.genre_cache import enrich_tracks_with_cached_genres
+
 # Song Statistics page
 @app.route('/song-stats')
 def song_stats():
@@ -38,10 +44,6 @@ def recommendations():
     except Exception as e:
         flash(f'Error loading recommendations: {str(e)}', 'error')
         return redirect(url_for('index'))
-from utils.genre_cache import enrich_tracks_with_cached_genres
-
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
 
 @app.route('/')
 def index():
