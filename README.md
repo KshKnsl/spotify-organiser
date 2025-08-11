@@ -115,22 +115,6 @@ spotify-organiser/
 └── README.md                 # This documentation
 ```
 
-## API Endpoints
-
-### Main Routes
-- `GET /` - Dashboard with user profile, playlists, and liked songs preview
-- `GET /login` - Initiate Spotify OAuth authentication
-- `GET /callback` - Handle OAuth callback and create session
-- `GET /logout` - Logout and clear user session
-
-### Content Routes
-- `GET /playlist/<id>` - View detailed playlist with all tracks and genres
-- `GET /liked-songs` - View complete liked songs collection
-
-### API Endpoints
-- `GET /api/current-playback` - Get current playback information (JSON)
-- `GET /api/album/<album_id>` - Get album details (JSON)
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues, fork the repository, and create pull requests for improvements.

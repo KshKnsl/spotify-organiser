@@ -1,12 +1,43 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import os
+import csv
+import io
 from utils.auth import get_spotify_oauth, get_spotify_client
 from utils.spotify_api import (
     get_user_playlists, get_user_liked_songs,
     get_current_playback, get_tracks_from_playlist,
     detect_duplicate_liked_songs, unlike_track, merge_all_duplicates,
-    create_genre_playlists, get_available_genres
+    create_genre_playlists, get_available_genres,
+    get_song_statistics, get_smart_recommendations
 )
+# Song Statistics page
+@app.route('/song-stats')
+def song_stats():
+    if 'token_info' not in session:
+        return redirect(url_for('login'))
+    try:
+        sp = get_spotify_client(session['token_info'])
+        u = sp.current_user()
+        p = request.args.get('period', 'all')
+        s = get_song_statistics(sp, p)
+        return render_template('song_stats.html', user=u, stats=s, period=p)
+    except Exception as e:
+        flash(f'Error loading statistics: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+# Smart Recommendations page
+@app.route('/recommendations')
+def recommendations():
+    if 'token_info' not in session:
+        return redirect(url_for('login'))
+    try:
+        sp = get_spotify_client(session['token_info'])
+        u = sp.current_user()
+        r = get_smart_recommendations(sp, limit=10)
+        return render_template('recommendations.html', user=u, recs=r)
+    except Exception as e:
+        flash(f'Error loading recommendations: {str(e)}', 'error')
+        return redirect(url_for('index'))
 from utils.genre_cache import enrich_tracks_with_cached_genres
 
 app = Flask(__name__)
@@ -14,25 +45,16 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
 
 @app.route('/')
 def index():
-    """Home page"""
     if 'token_info' not in session:
         return render_template('login.html')
-    
     try:
         sp = get_spotify_client(session['token_info'])
-        user_info = sp.current_user()
-        playlists = get_user_playlists(sp)
-        liked_songs = get_user_liked_songs(sp, limit=20)
-        current_playback = get_current_playback(sp)
-        
-        # Enrich the liked songs preview with genre information
-        enriched_liked_songs = enrich_tracks_with_cached_genres(sp, liked_songs)
-        
-        return render_template('index.html', 
-                             user=user_info, 
-                             playlists=playlists,
-                             liked_songs=enriched_liked_songs,
-                             current_playback=current_playback)
+        u = sp.current_user()
+        pls = get_user_playlists(sp)
+        ls = get_user_liked_songs(sp, limit=20)
+        pb = get_current_playback(sp)
+        ls2 = enrich_tracks_with_cached_genres(sp, ls)
+        return render_template('index.html', user=u, playlists=pls, liked_songs=ls2, current_playback=pb)
     except Exception as e:
         flash(f'Error loading data: {str(e)}', 'error')
         return render_template('login.html')
@@ -66,27 +88,113 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/playlist/<playlist_id>')
+
+@app.route('/playlist/<playlist_id>', methods=['GET'])
 def view_playlist(playlist_id):
-    """View detailed playlist with tracks"""
     if 'token_info' not in session:
         return redirect(url_for('login'))
-    
     try:
         sp = get_spotify_client(session['token_info'])
-        user_info = sp.current_user()
-        playlist = sp.playlist(playlist_id)
-        tracks = get_tracks_from_playlist(sp, playlist_id)
-        
-        # Enrich tracks with genre information
-        enriched_tracks = enrich_tracks_with_cached_genres(sp, tracks)
-        
-        return render_template('playlist_detail.html', 
-                             user=user_info,
-                             playlist=playlist, 
-                             tracks=enriched_tracks)
+        u = sp.current_user()
+        pl = sp.playlist(playlist_id)
+        trks = get_tracks_from_playlist(sp, playlist_id)
+        y = request.args.get('year')
+        pop = request.args.get('popularity')
+        ex = request.args.get('explicit')
+        ftr = []
+        for i in trks:
+            t = i.get('track')
+            if not t:
+                continue
+            if y and t.get('album', {}).get('release_date', '')[:4] != str(y):
+                continue
+            if pop and t.get('popularity', 0) < int(pop):
+                continue
+            if ex == 'true' and not t.get('explicit', False):
+                continue
+            if ex == 'false' and t.get('explicit', False):
+                continue
+            ftr.append(i)
+        if not (y or pop or ex):
+            ftr = trks
+        trks2 = enrich_tracks_with_cached_genres(sp, ftr)
+        return render_template('playlist_detail.html', user=u, playlist=pl, tracks=trks2)
     except Exception as e:
         flash(f'Error loading playlist: {str(e)}', 'error')
         return redirect(url_for('index'))
+
+@app.route('/playlist/<playlist_id>/export/<format>')
+def export_playlist(playlist_id, format):
+    if 'token_info' not in session:
+        return redirect(url_for('login'))
+    try:
+        sp = get_spotify_client(session['token_info'])
+        playlist = sp.playlist(playlist_id)
+        tracks = get_tracks_from_playlist(sp, playlist_id)
+        # Prepare data
+        rows = []
+        for item in tracks:
+            tr = item.get('track')
+            if not tr:
+                continue
+            rows.append({
+                'name': tr.get('name'),
+                'artist': tr['artists'][0]['name'] if tr.get('artists') else '',
+                'album': tr.get('album', {}).get('name', ''),
+                'release_date': tr.get('album', {}).get('release_date', ''),
+                'popularity': tr.get('popularity', ''),
+                'explicit': tr.get('explicit', False),
+                'id': tr.get('id'),
+                'uri': tr.get('uri'),
+            })
+        if format == 'json':
+            return Response(json.dumps(rows, indent=2), mimetype='application/json', headers={"Content-Disposition":f"attachment;filename={playlist['name']}.json"})
+        elif format == 'csv':
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+            return Response(output.getvalue(), mimetype='text/csv', headers={"Content-Disposition":f"attachment;filename={playlist['name']}.csv"})
+        else:
+            flash('Invalid export format', 'error')
+            return redirect(url_for('view_playlist', playlist_id=playlist_id))
+    except Exception as e:
+        flash(f'Export failed: {str(e)}', 'error')
+        return redirect(url_for('view_playlist', playlist_id=playlist_id))
+
+@app.route('/playlist/<playlist_id>/import', methods=['POST'])
+def import_playlist(playlist_id):
+    if 'token_info' not in session:
+        return redirect(url_for('login'))
+    try:
+        sp = get_spotify_client(session['token_info'])
+        file = request.files.get('import_file')
+        if not file:
+            flash('No file uploaded', 'error')
+            return redirect(url_for('view_playlist', playlist_id=playlist_id))
+        ext = file.filename.split('.')[-1].lower()
+        tracks_to_add = []
+        if ext == 'json':
+            data = json.load(file)
+            for row in data:
+                if 'uri' in row:
+                    tracks_to_add.append(row['uri'])
+        elif ext == 'csv':
+            stream = io.StringIO(file.stream.read().decode('utf-8'))
+            reader = csv.DictReader(stream)
+            for row in reader:
+                if 'uri' in row:
+                    tracks_to_add.append(row['uri'])
+        else:
+            flash('Unsupported file type', 'error')
+            return redirect(url_for('view_playlist', playlist_id=playlist_id))
+        # Add tracks to playlist in batches of 100
+        for i in range(0, len(tracks_to_add), 100):
+            sp.playlist_add_items(playlist_id, tracks_to_add[i:i+100])
+        flash(f'Imported {len(tracks_to_add)} tracks to playlist', 'success')
+    except Exception as e:
+        flash(f'Import failed: {str(e)}', 'error')
+    return redirect(url_for('view_playlist', playlist_id=playlist_id))
 
 @app.route('/liked-songs')
 def view_liked_songs():

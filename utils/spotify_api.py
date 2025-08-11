@@ -1,33 +1,86 @@
+from collections import Counter
+import datetime
+def get_song_statistics(sp, p='all'):
+    s = get_user_liked_songs(sp)
+    a, g, t = [], [], []
+    n = datetime.datetime.now()
+    for i in s:
+        tr = i.get('track')
+        if not tr:
+            continue
+        d = tr.get('album', {}).get('release_date', '')
+        if d:
+            try:
+                y = int(d[:4])
+            except Exception:
+                y = None
+        else:
+            y = None
+        if p == 'year' and y and y != n.year:
+            continue
+        if p == 'month' and y and y != n.year:
+            continue
+        if tr.get('artists'):
+            a.extend([x['name'] for x in tr['artists']])
+            g.extend(tr['artists'][0].get('genres', []))
+        t.append(tr['name'])
+    ta = Counter(a).most_common(10)
+    tg = Counter(g).most_common(10)
+    tt = Counter(t).most_common(10)
+    return {'top_artists': ta, 'top_genres': tg, 'top_tracks': tt}
+
+def get_smart_recommendations(sp, l=10):
+    s = get_user_liked_songs(sp, limit=50)
+    a, t = [], []
+    for i in s:
+        tr = i.get('track')
+        if not tr:
+            continue
+        if tr.get('artists') and len(a) < 2:
+            a.append(tr['artists'][0]['id'])
+        if tr.get('id') and len(t) < 3:
+            t.append(tr['id'])
+        if len(a) >= 2 and len(t) >= 3:
+            break
+    r = sp.recommendations(seed_artists=a, seed_tracks=t, limit=l)
+    sug = []
+    for tr in r['tracks']:
+        sug.append({
+            'name': tr['name'],
+            'artist': tr['artists'][0]['name'] if tr.get('artists') else '',
+            'album': tr.get('album', {}).get('name', ''),
+            'id': tr.get('id'),
+            'uri': tr.get('uri'),
+            'preview_url': tr.get('preview_url'),
+        })
+    return {'recommendations': sug}
 from typing import List, Dict, Optional
 import spotipy
 import json
 from .genre_cache import enrich_tracks_with_cached_genres
 
-def get_user_playlists(sp: spotipy.Spotify) -> List[Dict]:
-    pl = []
-    res = sp.current_user_playlists()
-    while res:
-        pl.extend(res['items'])
-        if res['next']:
-            res = sp.next(res)
+def get_user_playlists(sp):
+    pls = []
+    r = sp.current_user_playlists()
+    while r:
+        pls.extend(r['items'])
+        if r['next']:
+            r = sp.next(r)
         else:
             break
+    print(f"Finished fetching user playlists. Total: {len(pls)}")
+    return pls
 
-    print(f"Finished fetching user playlists. Total: {len(pl)}")
-    return pl
 
-
-def get_tracks_from_playlist(sp: spotipy.Spotify, playlist_id: str) -> List[Dict]:
+def get_tracks_from_playlist(sp, pid):
     tr = []
-    res = sp.playlist_tracks(playlist_id)
-    
-    while res:
-        tr.extend(res['items'])
-        if res['next']:
-            res = sp.next(res)
+    r = sp.playlist_tracks(pid)
+    while r:
+        tr.extend(r['items'])
+        if r['next']:
+            r = sp.next(r)
         else:
             break
-    
     print(f"Finished fetching playlist tracks. Total: {len(tr)}")
     return tr
 

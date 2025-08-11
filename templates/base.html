@@ -21,6 +21,12 @@
                 
                 {% if session.token_info %}
                 <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('index') }}" class="hover:text-[#1db954] transition-colors">Home</a>
+                    <a href="{{ url_for('view_liked_songs') }}" class="hover:text-[#1db954] transition-colors">Liked Songs</a>
+                    <a href="{{ url_for('genre_filter') }}" class="hover:text-[#1db954] transition-colors">Genre Filter</a>
+                    <a href="{{ url_for('detect_duplicates') }}" class="hover:text-[#1db954] transition-colors">Duplicates</a>
+                    <a href="{{ url_for('song_stats') }}" class="hover:text-[#1db954] transition-colors">Song Stats</a>
+                    <a href="{{ url_for('recommendations') }}" class="hover:text-[#1db954] transition-colors">Recommendations</a>
                     <!-- User Profile -->
                     {% if user %}
                     <div class="flex items-center space-x-3">
@@ -39,7 +45,6 @@
                         </div>
                     </div>
                     {% endif %}
-                    
                     <a href="{{ url_for('logout') }}" 
                        class="bg-[#535353] hover:bg-[#b3b3b3] text-white px-4 py-2 rounded-full transition-colors">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('index') }}" class="inline-flex items-center text-[#1db954] hover:text-green-400 transition-colors">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+    </a>
+</div>
+<h1 class="text-3xl font-bold mb-4">Smart Recommendations</h1>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {% for rec in recs.recommendations %}
+    <div class="bg-[#191414] rounded-lg p-4 border border-[#535353] flex items-center gap-4">
+        <div>
+            <div class="font-semibold text-lg">{{ rec.name }}</div>
+            <div class="text-[#b3b3b3]">{{ rec.artist }}</div>
+            <div class="text-sm text-[#b3b3b3]">{{ rec.album }}</div>
+            {% if rec.preview_url %}
+            <audio controls src="{{ rec.preview_url }}" class="mt-2"></audio>
+            {% endif %}
+        </div>
+        <a href="https://open.spotify.com/track/{{ rec.id }}" target="_blank" class="ml-auto text-[#1db954] hover:underline">Open in Spotify</a>
+    </div>
+    {% else %}
+    <div>No recommendations found.</div>
+    {% endfor %}
+</div>
+{% endblock %}

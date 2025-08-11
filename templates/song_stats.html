@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('index') }}" class="inline-flex items-center text-[#1db954] hover:text-green-400 transition-colors">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+    </a>
+</div>
+<h1 class="text-3xl font-bold mb-4">Song Statistics{% if period != 'all' %} ({{ period|capitalize }}){% endif %}</h1>
+<div class="mb-4">
+    <form method="get" class="flex gap-2">
+        <label>Period:</label>
+        <select name="period" onchange="this.form.submit()" class="px-2 py-1 rounded border border-[#535353] bg-[#191414] text-white">
+            <option value="all" {% if period == 'all' %}selected{% endif %}>All Time</option>
+            <option value="year" {% if period == 'year' %}selected{% endif %}>This Year</option>
+        </select>
+    </form>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div>
+        <h2 class="text-xl font-semibold mb-2">Top Artists</h2>
+        <ul>
+        {% for artist, count in stats.top_artists %}
+            <li>{{ artist }} <span class="text-[#1db954]">({{ count }})</span></li>
+        {% else %}
+            <li>No data</li>
+        {% endfor %}
+        </ul>
+    </div>
+    <div>
+        <h2 class="text-xl font-semibold mb-2">Top Genres</h2>
+        <ul>
+        {% for genre, count in stats.top_genres %}
+            <li>{{ genre }} <span class="text-[#1db954]">({{ count }})</span></li>
+        {% else %}
+            <li>No data</li>
+        {% endfor %}
+        </ul>
+    </div>
+    <div>
+        <h2 class="text-xl font-semibold mb-2">Top Tracks</h2>
+        <ul>
+        {% for track, count in stats.top_tracks %}
+            <li>{{ track }} <span class="text-[#1db954]">({{ count }})</span></li>
+        {% else %}
+            <li>No data</li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

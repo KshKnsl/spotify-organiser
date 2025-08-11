@@ -9,6 +9,29 @@
     </a>
 </div>
 
+<div class="flex flex-wrap gap-4 mb-6">
+    <form method="get" action="{{ url_for('export_playlist', playlist_id=playlist.id, format='csv') }}">
+        <button type="submit" class="bg-[#1db954] text-white px-4 py-2 rounded hover:bg-green-600">Export CSV</button>
+    </form>
+    <form method="get" action="{{ url_for('export_playlist', playlist_id=playlist.id, format='json') }}">
+        <button type="submit" class="bg-[#1db954] text-white px-4 py-2 rounded hover:bg-green-600">Export JSON</button>
+    </form>
+    <form method="post" action="{{ url_for('import_playlist', playlist_id=playlist.id) }}" enctype="multipart/form-data">
+        <input type="file" name="import_file" accept=".csv,.json" required class="mr-2">
+        <button type="submit" class="bg-[#535353] text-white px-4 py-2 rounded hover:bg-[#1db954]">Import</button>
+    </form>
+    <form method="get" action="{{ url_for('view_playlist', playlist_id=playlist.id) }}" class="flex gap-2 items-center">
+        <input type="number" name="year" placeholder="Year" value="{{ request.args.get('year', '') }}" class="px-2 py-1 rounded border border-[#535353] bg-[#191414] text-white" style="width: 80px;">
+        <input type="number" name="popularity" placeholder="Popularity ≥" min="0" max="100" value="{{ request.args.get('popularity', '') }}" class="px-2 py-1 rounded border border-[#535353] bg-[#191414] text-white" style="width: 110px;">
+        <select name="explicit" class="px-2 py-1 rounded border border-[#535353] bg-[#191414] text-white">
+            <option value="">Explicit?</option>
+            <option value="true" {% if request.args.get('explicit') == 'true' %}selected{% endif %}>Yes</option>
+            <option value="false" {% if request.args.get('explicit') == 'false' %}selected{% endif %}>No</option>
+        </select>
+        <button type="submit" class="bg-[#535353] text-white px-3 py-2 rounded hover:bg-[#1db954]">Filter</button>
+    </form>
+</div>
+
 <!-- Playlist Header -->
 <div class="bg-[#191414] rounded-lg p-6 mb-6 border border-[#535353]">
     <div class="flex items-center space-x-6">
